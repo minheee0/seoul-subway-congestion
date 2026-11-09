@@ -41,7 +41,7 @@
 ```
 data/raw/         원본 CSV (git 제외)
 data/processed/   정제된 데이터 (git 제외)
-src/subway/       load.py(불러오기) · clean.py(정제) · stats.py(대응 비교) · transfer.py(환승역 판별) · config.py(기준값)
+src/subway/       load.py(불러오기) · clean.py(정제) · stats.py(대응 비교) · transfer.py(환승역 판별) · route.py(경로·출발 시각 추천) · config.py(기준값)
 notebooks/        탐색·분석 노트북
 reports/figures/  README용 그래프
 app/              Streamlit 웹앱
@@ -118,6 +118,18 @@ python -m ipykernel install --sys-prefix --name subway-congestion
 
 ![지도](reports/figures/08_cluster_map.png)
 
+### 5. 경로별 혼잡도와 출발 시각 추천 ([05_route_recommendation.ipynb](notebooks/05_route_recommendation.ipynb))
+
+- 역간 소요시간으로 1~8호선 277개 (노선, 역)을 잇는 방향 그래프를 만들었다. 지선 분기점(성수·신도림·강동), 6호선 응암 단방향 순환, 방향 이름(상선/하선, 내선/외선)은 종착역 데이터로 확인했다.
+- 출발 시각을 10분씩 바꿔 가며 경로를 따라 시각을 누적하고, 각 구간에서 탈 열차의 혼잡도로 **경로 평균 혼잡도**를 계산한다. 최단 경로와 10분 이내로 더 걸리는 대안 경로도 함께 비교한다.
+
+![출발 시각별 경로 혼잡도](reports/figures/09_route_departures.png)
+
+- 사당 → 홍대입구(09:00 도착 기한): 2호선으로 08:00에 타면 평균 84%(신도림~문래 133%)다. 07:00 출발이면 43%, 4호선→6호선→2호선으로 4.5분 돌아가면 31%다.
+- 저녁에는 17시 이후 우회 경로가 2호선보다 10~25%p 덜 붐빈다.
+- 구간마다 5분으로 어림하면 소요시간이 2~3배로 부풀고, 실제보다 30분~1시간 뒤 열차의 혼잡도를 읽게 된다.
+- 가정: 정차 30초, 환승 4분, 첫 열차 대기 시간 미포함.
+
 ## 진행 상황
 
 - [x] 프로젝트 구조, 데이터 불러오기 모듈
@@ -126,5 +138,5 @@ python -m ipykernel install --sys-prefix --name subway-congestion
 - [x] 등교/하교 비교 검정
 - [x] 회귀 분석
 - [x] 시간대 프로파일 군집화
-- [ ] 역간 소요시간 기반 경로 그래프
+- [x] 역간 소요시간 기반 경로 그래프
 - [ ] Streamlit 앱 + 배포
