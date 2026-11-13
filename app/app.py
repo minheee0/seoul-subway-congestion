@@ -1,5 +1,6 @@
 """통학 경로 혼잡도 웹앱."""
 
+from datetime import time, timedelta
 from pathlib import Path
 
 import streamlit as st
@@ -25,3 +26,8 @@ stations = sorted({n[1] for n in graph.nodes})
 col1, col2 = st.columns(2)
 origin = col1.selectbox("출발역", stations, index=stations.index("사당"))
 dest = col2.selectbox("도착역", stations, index=stations.index("홍대입구"))
+
+col3, col4 = st.columns([1, 2])
+day_type = col3.radio("요일", ["평일", "토요일", "일요일"], horizontal=True)
+depart = col4.time_input("출발 시각", value=time(8, 0), step=timedelta(minutes=10))
+depart_hour = depart.hour + depart.minute / 60
