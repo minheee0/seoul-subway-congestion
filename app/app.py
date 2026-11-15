@@ -7,7 +7,7 @@ import streamlit as st
 
 from subway.clean import clean_congestion
 from subway.load import load_congestion, load_travel_time
-from subway.route import CongestionLookup, build_graph
+from subway.route import CongestionLookup, build_graph, departure_table, fmt_time
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
 
@@ -31,3 +31,12 @@ col3, col4 = st.columns([1, 2])
 day_type = col3.radio("요일", ["평일", "토요일", "일요일"], horizontal=True)
 depart = col4.time_input("출발 시각", value=time(8, 0), step=timedelta(minutes=10))
 depart_hour = depart.hour + depart.minute / 60
+
+if origin == dest:
+    st.warning("출발역과 도착역이 같아요.")
+    st.stop()
+
+table = departure_table(graph, lookup, origin, dest, depart_hour, depart_hour, day_type=day_type)
+table["도착"] = table["도착"].map(fmt_time)
+st.subheader(f"{depart.strftime('%H:%M')} 출발 경로 비교")
+st.dataframe(table[["노선", "소요(분)", "환승", "도착", "평균 혼잡도", "최대 혼잡도"]].round(1), hide_index=True)
