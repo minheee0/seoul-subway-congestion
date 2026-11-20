@@ -3,6 +3,8 @@
 from datetime import time, timedelta
 from pathlib import Path
 
+import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 from subway.clean import clean_congestion
@@ -40,3 +42,25 @@ table = departure_table(graph, lookup, origin, dest, depart_hour, depart_hour, d
 table["도착"] = table["도착"].map(fmt_time)
 st.subheader(f"{depart.strftime('%H:%M')} 출발 경로 비교")
 st.dataframe(table[["노선", "소요(분)", "환승", "도착", "평균 혼잡도", "최대 혼잡도"]].round(1), hide_index=True)
+
+# 출발 시각을 앞뒤 1시간 범위에서 10분씩 바꿔 본다
+start, end = max(5.5, depart_hour - 1), min(23.5, depart_hour + 1)
+around = departure_table(graph, lookup, origin, dest, start, end, step_min=10, day_type=day_type)
+around["출발 시각"] = pd.Timestamp("2000-01-01") + pd.to_timedelta(around["출발"], unit="h")
+
+ROUTE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]  # 경로 순서대로 고정
+fig = go.Figure()
+for i, (_, r) in enumerate(around.groupby("경로")):
+    fig.add_trace(go.Scatter(
+        x=r["출발 시각"], y=r["평균 혼잡도"], name=f"{r['노선'].iloc[0]} ({r['소요(분)'].iloc[0]:.0f}분)",
+        mode="lines+markers", line=dict(width=2, color=ROUTE_COLORS[i]), marker=dict(size=8),
+        hovertemplate="%{y:.0f}%<extra>%{fullData.name}</extra>",
+    ))
+selected = pd.Timestamp("2000-01-01") + pd.to_timedelta(depart_hour, unit="h")
+fig.add_vline(x=selected, line=dict(width=1, dash="dot", color="gray"))
+fig.update_layout(
+    title="출발 시각에 따른 경로 평균 혼잡도", hovermode="x unified", height=360,
+    xaxis=dict(title="출발 시각", tickformat="%H:%M"), yaxis=dict(title="평균 혼잡도(%)", rangemode="tozero"),
+    legend=dict(orientation="h", y=-0.25), margin=dict(t=50, b=10),
+)
+st.plotly_chart(fig, use_container_width=True)
