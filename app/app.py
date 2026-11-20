@@ -9,7 +9,7 @@ import streamlit as st
 
 from subway.clean import clean_congestion
 from subway.load import load_congestion, load_travel_time
-from subway.route import CongestionLookup, build_graph, departure_table, fmt_time
+from subway.route import CongestionLookup, build_graph, departure_table, fmt_time, recommend
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
 
@@ -33,6 +33,10 @@ col3, col4 = st.columns([1, 2])
 day_type = col3.radio("요일", ["평일", "토요일", "일요일"], horizontal=True)
 depart = col4.time_input("출발 시각", value=time(8, 0), step=timedelta(minutes=10))
 depart_hour = depart.hour + depart.minute / 60
+deadline = None
+if st.checkbox("도착 기한 정하기"):
+    arrive_by = st.time_input("이 시각까지 도착", value=time(9, 0), step=timedelta(minutes=10))
+    deadline = arrive_by.hour + arrive_by.minute / 60
 
 if origin == dest:
     st.warning("출발역과 도착역이 같아요.")
@@ -47,6 +51,17 @@ st.dataframe(table[["노선", "소요(분)", "환승", "도착", "평균 혼잡�
 start, end = max(5.5, depart_hour - 1), min(23.5, depart_hour + 1)
 around = departure_table(graph, lookup, origin, dest, start, end, step_min=10, day_type=day_type)
 around["출발 시각"] = pd.Timestamp("2000-01-01") + pd.to_timedelta(around["출발"], unit="h")
+
+try:
+    best = recommend(around, arrive_by=deadline)
+    now = table.iloc[0]
+    gap = now["평균 혼잡도"] - best["평균 혼잡도"]
+    msg = f"**{fmt_time(best['출발'])} 출발, {best['노선']}** → {fmt_time(best['도착'])} 도착, 평균 혼잡도 **{best['평균 혼잡도']:.0f}%**"
+    if gap >= 1:
+        msg += f"  \n지금 고른 시각의 최단 경로({now['평균 혼잡도']:.0f}%)보다 {gap:.0f}%p 덜 붐벼요."
+    st.success(msg, icon="✅")
+except ValueError:
+    st.warning("앞뒤 1시간 안에는 도착 기한을 맞추는 출발 시각이 없어요. 출발 시각을 앞당겨 보세요.")
 
 ROUTE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]  # 경로 순서대로 고정
 fig = go.Figure()
