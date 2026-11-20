@@ -9,7 +9,8 @@ import streamlit as st
 
 from subway.clean import clean_congestion
 from subway.load import load_congestion, load_travel_time
-from subway.route import CongestionLookup, build_graph, departure_table, fmt_time, recommend
+from subway.route import (CongestionLookup, build_graph, candidate_paths, departure_table, fmt_time, recommend,
+                          simulate)
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
 
@@ -46,6 +47,19 @@ table = departure_table(graph, lookup, origin, dest, depart_hour, depart_hour, d
 table["도착"] = table["도착"].map(fmt_time)
 st.subheader(f"{depart.strftime('%H:%M')} 출발 경로 비교")
 st.dataframe(table[["노선", "소요(분)", "환승", "도착", "평균 혼잡도", "최대 혼잡도"]].round(1), hide_index=True)
+
+with st.expander("구간별 혼잡도 보기"):
+    paths = candidate_paths(graph, origin, dest)
+    tabs = st.tabs([f"경로 {i + 1}: {r}" for i, r in enumerate(table["노선"])])
+    for tab, path in zip(tabs, paths):
+        legs = simulate(graph, lookup, path, depart_hour, day_type).legs
+        tab.dataframe(pd.DataFrame({
+            "탑승": legs["board"].map(fmt_time),
+            "노선": legs["line"].astype(str) + "호선",
+            "구간": legs["from"] + " → " + legs["to"],
+            "방향": legs["direction"],
+            "혼잡도(%)": legs["congestion"].round(1),
+        }), hide_index=True)
 
 # 출발 시각을 앞뒤 1시간 범위에서 10분씩 바꿔 본다
 start, end = max(5.5, depart_hour - 1), min(23.5, depart_hour + 1)
