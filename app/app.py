@@ -7,19 +7,17 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from subway.clean import clean_congestion
-from subway.load import load_congestion, load_travel_time
 from subway.route import (CongestionLookup, build_graph, candidate_paths, departure_table, fmt_time, recommend,
                           simulate)
 
-RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
+# 원본 CSV 대신 scripts/make_app_data.py로 만든 정제 데이터를 읽는다
+DATA = Path(__file__).resolve().parent / "data"
 
 
 @st.cache_resource
 def load():
-    df = clean_congestion(load_congestion(RAW / "서울교통공사_지하철혼잡도정보_20260930.csv"))
-    graph = build_graph(load_travel_time(RAW / "서울교통공사 역간거리 및 소요시간_240810.csv"))
-    return graph, CongestionLookup(df)
+    graph = build_graph(pd.read_csv(DATA / "travel_time.csv"))
+    return graph, CongestionLookup(pd.read_csv(DATA / "congestion.csv"))
 
 
 st.title("🚇 통학 경로 혼잡도")
@@ -92,4 +90,4 @@ fig.update_layout(
     xaxis=dict(title="출발 시각", tickformat="%H:%M"), yaxis=dict(title="평균 혼잡도(%)", rangemode="tozero"),
     legend=dict(orientation="h", y=-0.25), margin=dict(t=50, b=10),
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
